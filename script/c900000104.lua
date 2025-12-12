@@ -51,8 +51,8 @@ end
 
 -- 🔹 Condition pour annulation durant Battle Phase
 function s.negcon(e,tp,eg,ep,ev,re,r,rp)
-	return rp==1-tp and Duel.GetCurrentPhase()>=PHASE_BATTLE_START and Duel.GetCurrentPhase()<=PHASE_BATTLE
-		and Duel.IsChainNegatable(ev)
+	local ph=Duel.GetCurrentPhase()
+	return rp==1-tp and ph>=PHASE_BATTLE_START and ph<=PHASE_BATTLE and Duel.IsChainNegatable(ev)
 end
 
 -- 🔹 Ciblage pour annulation
@@ -81,7 +81,7 @@ function s.damtg(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then return true end
 	local bc=e:GetHandler():GetBattleTarget()
 	if bc then
-		local dam=bc:GetAttack()//2
+		local dam=math.floor(bc:GetAttack()/2)
 		Duel.SetTargetPlayer(1-tp)
 		Duel.SetTargetParam(dam)
 		Duel.SetOperationInfo(0,CATEGORY_DAMAGE,nil,0,1-tp,dam)
@@ -93,9 +93,14 @@ function s.damop(e,tp,eg,ep,ev,re,r,rp)
 	local bc=e:GetHandler():GetBattleTarget()
 	if bc then
 		local p=Duel.GetChainInfo(0,CHAININFO_TARGET_PLAYER)
-		local dam=bc:GetAttack()//2
+		local dam=math.floor(bc:GetAttack()/2)
 		Duel.Damage(p,dam,REASON_EFFECT)
 	end
+end
+
+-- 🔹 Filtre pour "Feu de camps"
+function s.fcfilter(c)
+	return c:IsCode(900000106) and c:IsSSetable()
 end
 
 -- 🔹 Ciblage pour poser "Feu de camps"
@@ -103,9 +108,7 @@ function s.fctg(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then 
 		return Duel.IsExistingMatchingCard(s.fcfilter,tp,LOCATION_HAND+LOCATION_DECK+LOCATION_GRAVE,0,1,nil) 
 	end
-end
-function s.fcfilter(c)
-	return c:IsCode(900000106) and c:IsSSetable()
+	Duel.SetOperationInfo(0,CATEGORY_TOHAND,nil,1,tp,LOCATION_DECK+LOCATION_HAND+LOCATION_GRAVE)
 end
 
 -- 🔹 Opération : poser la carte
@@ -114,5 +117,6 @@ function s.fcop(e,tp,eg,ep,ev,re,r,rp)
 	local g=Duel.SelectMatchingCard(tp,s.fcfilter,tp,LOCATION_HAND+LOCATION_DECK+LOCATION_GRAVE,0,1,1,nil)
 	if #g>0 then
 		Duel.SSet(tp,g:GetFirst())
+		Duel.ConfirmCards(1-tp,g)
 	end
 end

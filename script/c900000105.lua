@@ -13,7 +13,7 @@ end
 
 -- 🔹 Filtre : monstre Rituel "Seigneur des cendres"
 function s.filter(c,e,tp,m)
-	return c:IsCode(900000104) 
+	return c:IsCode(900000104)
 		and c:IsCanBeSpecialSummoned(e,SUMMON_TYPE_RITUAL,tp,false,true)
 		and c:CheckRitualMaterial(m)
 end
@@ -37,9 +37,11 @@ function s.activate(e,tp,eg,ep,ev,re,r,rp)
 
 	mg=mg:Filter(Card.IsCanBeRitualMaterial,tc,tc)
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_RELEASE)
-	local mat=mg:SelectWithSumGreater(tp,Card.GetLevel,10) -- Niveau total min. 10
-	tc:SetMaterial(mat)
-	Duel.ReleaseRitualMaterial(mat)
-	Duel.SpecialSummon(tc,SUMMON_TYPE_RITUAL,tp,tp,false,true,POS_FACEUP)
-	tc:CompleteProcedure()
+	local mat=mg:SelectWithSumEqual(tp,Card.GetLevel,10,tc:GetLevel())
+	if #mat>0 then
+		tc:SetMaterial(mat)
+		Duel.ReleaseRitualMaterial(mat)
+		Duel.SpecialSummon(tc,SUMMON_TYPE_RITUAL,tp,tp,false,true,POS_FACEUP)
+		tc:CompleteProcedure()
+	end
 end

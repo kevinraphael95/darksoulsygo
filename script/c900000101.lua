@@ -1,67 +1,82 @@
 --Feu de camps
 --kevinraphael95
 local s,id=GetID()
+
+-- Archetype Mort-Vivant
+local SET_MORTVIVANT = 0x710
+
+-- Compteur Âme
+local COUNTER_SOUL = 0x700
+
 function s.initial_effect(c)
-	-- Activer la carte
+	-- Autoriser l'utilisation du compteur
+	c:EnableCounterPermit(COUNTER_SOUL)
+
+	-- Activation libre
 	local e0=Effect.CreateEffect(c)
 	e0:SetType(EFFECT_TYPE_ACTIVATE)
 	e0:SetCode(EVENT_FREE_CHAIN)
 	c:RegisterEffect(e0)
 
-	-- Une fois par tour : choisissez un effet
+	-- Une fois par tour : choisir un effet
 	local e1=Effect.CreateEffect(c)
-	e1:SetDescription(aux.Stringid(id,5))
+	e1:SetDescription(aux.Stringid(id,0)) -- index 0
 	e1:SetType(EFFECT_TYPE_IGNITION)
-	e1:SetRange(LOCATION_SZONE) -- IMPORTANT : carte continue, donc Zone Magie & Piège
-	e1:SetCountLimit(1,id) -- une fois par tour
+	e1:SetRange(LOCATION_SZONE)
+	e1:SetCountLimit(1,id)
 	e1:SetTarget(s.mttg)
 	e1:SetOperation(s.mtop)
 	c:RegisterEffect(e1)
 end
 
+-- Cible : toujours valide
 function s.mttg(e,tp,eg,ep,ev,re,r,rp,chk)
-	if chk==0 then return true end
+	return true
 end
 
+-- Choix et résolution de l'effet
 function s.mtop(e,tp,eg,ep,ev,re,r,rp)
-	local ops,ids={},{}
+	local ops, ids = {}, {}
 
-	-- Option 1 : Gagner 1000 LP
-	table.insert(ops, aux.Stringid(id,6))
+	-- Option 1 : Gagnez 1000 LP
+	table.insert(ops, aux.Stringid(id,1))
 	table.insert(ids,1)
 
-	-- Option 2 : Placer 1 compteur sur un Zombie face-up si possible
-	if Duel.IsExistingMatchingCard(Card.IsFaceup, tp, LOCATION_MZONE, 0, 1, nil) then
-		local g=Duel.GetMatchingGroup(Card.IsFaceup, tp, LOCATION_MZONE, 0, nil)
-		if g:IsExists(Card.IsRace,1,nil,RACE_ZOMBIE) then
-			table.insert(ops, aux.Stringid(id,7))
-			table.insert(ids,2)
-		end
+	-- Option 2 : Ajouter 1 compteur Âme sur un Mort-Vivant
+	local g=Duel.GetMatchingGroup(Card.IsFaceup, tp, LOCATION_MZONE, 0, nil)
+	if g:IsExists(Card.IsSetCard,1,nil,SET_MORTVIVANT) then
+		table.insert(ops, aux.Stringid(id,2))
+		table.insert(ids,2)
 	end
 
-	-- Option 3 : Ajouter un Zombie depuis le Cimetière si possible
-	if Duel.IsExistingMatchingCard(aux.NecroValleyFilter(Card.IsRace), tp, LOCATION_GRAVE, 0, 1, nil, RACE_ZOMBIE) then
-		table.insert(ops, aux.Stringid(id,8))
+	-- Option 3 : Récupérer un Mort-Vivant depuis le Cimetière
+	if Duel.IsExistingMatchingCard(aux.NecroValleyFilter(Card.IsSetCard), tp, LOCATION_GRAVE, 0, 1, nil, SET_MORTVIVANT) then
+		table.insert(ops, aux.Stringid(id,3))
 		table.insert(ids,3)
 	end
 
 	if #ops==0 then return end
 
-	local sel=Duel.SelectOption(tp, table.unpack(ops))
-	local choice=ids[sel+1]
+	local sel = Duel.SelectOption(tp, table.unpack(ops))
+	local choice = ids[sel+1]
 
 	if choice==1 then
 		Duel.Recover(tp,1000,REASON_EFFECT)
+
 	elseif choice==2 then
 		Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_FACEUP)
-		local g=Duel.SelectMatchingCard(tp, aux.FaceupFilter(Card.IsRace,RACE_ZOMBIE), tp, LOCATION_MZONE, 0, 1, 1, nil)
-		if #g>0 then g:GetFirst():AddCounter(0x101,1) end
+		local tg=Duel.SelectMatchingCard(tp, Card.IsFaceup, tp, LOCATION_MZONE, 0, 1,1,nil)
+		local tc = tg:GetFirst()
+		if tc and tc:IsSetCard(SET_MORTVIVANT) then
+			tc:AddCounter(COUNTER_SOUL,1)
+		end
+
 	elseif choice==3 then
 		Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_ATOHAND)
-		local g=Duel.SelectMatchingCard(tp, aux.NecroValleyFilter(Card.IsRace), tp, LOCATION_GRAVE, 0, 1, 1, nil, RACE_ZOMBIE)
-		if #g>0 then
-			Duel.SendtoHand(g,nil,REASON_EFFECT)
-			Duel.ConfirmCards(1-tp,g)
+		local hg=Duel.SelectMatchingCard(tp, aux.NecroValleyFilter(Card.IsSetCard), tp, LOCATION_GRAVE, 0, 1, 1, nil, SET_MORTVIVANT)
+		if #hg>0 then
+			Duel.SendtoHand(hg,nil,REASON_EFFECT)
+			Duel.ConfirmCards(1-tp,hg)
 		end
 	end
 end
