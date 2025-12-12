@@ -1,10 +1,12 @@
 --Basilic Mort-vivant
 local s,id=GetID()
 function s.initial_effect(c)
-	-- Autorise l'utilisation de compteurs Âme (0x101)
-	c:EnableCounterPermit(0x101)
+	-- Autorise l'utilisation des compteurs Mort-vivant (0x700)
+	c:EnableCounterPermit(0x700)
 
-	-- 1️⃣ Augmentation de DEF selon le nombre de compteurs Âme
+	--------------------------------------
+	-- 1️⃣ DEF +500 par compteur Mort-vivant
+	--------------------------------------
 	local e1=Effect.CreateEffect(c)
 	e1:SetType(EFFECT_TYPE_SINGLE)
 	e1:SetCode(EFFECT_UPDATE_DEFENSE)
@@ -13,14 +15,18 @@ function s.initial_effect(c)
 	e1:SetValue(s.defval)
 	c:RegisterEffect(e1)
 
-	-- 2️⃣ Effet FLIP : ajoute un compteur Âme
+	--------------------------------------
+	-- 2️⃣ Effet FLIP : ajoute 1 compteur
+	--------------------------------------
 	local e2=Effect.CreateEffect(c)
 	e2:SetDescription(aux.Stringid(id,0))
 	e2:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_FLIP)
 	e2:SetOperation(s.flipop)
 	c:RegisterEffect(e2)
 
-	-- 3️⃣ Réduction d'ATK des monstres attaquant cette carte
+	---------------------------------------------------------
+	-- 3️⃣ Réduction d'ATK des monstres qui attaquent ce monstre
+	---------------------------------------------------------
 	local e3=Effect.CreateEffect(c)
 	e3:SetType(EFFECT_TYPE_FIELD)
 	e3:SetCode(EFFECT_UPDATE_ATTACK)
@@ -30,7 +36,9 @@ function s.initial_effect(c)
 	e3:SetValue(-700)
 	c:RegisterEffect(e3)
 
-	-- 4️⃣ Restriction de matériel pour les monstres ayant attaqué cette carte
+	---------------------------------------------------------
+	-- 4️⃣ Monstres ayant attaqué Ce monstre ne peuvent pas être utilisés en Matériel
+	---------------------------------------------------------
 	local e4=Effect.CreateEffect(c)
 	e4:SetType(EFFECT_TYPE_FIELD)
 	e4:SetCode(EFFECT_CANNOT_BE_MATERIAL)
@@ -41,7 +49,9 @@ function s.initial_effect(c)
 	e4:SetValue(1)
 	c:RegisterEffect(e4)
 
-	-- 5️⃣ Marquer les monstres qui ont attaqué cette carte
+	---------------------------------------------------------
+	-- 5️⃣ Marque les monstres ayant attaqué ce monstre
+	---------------------------------------------------------
 	local e5=Effect.CreateEffect(c)
 	e5:SetType(EFFECT_TYPE_FIELD+EFFECT_TYPE_CONTINUOUS)
 	e5:SetCode(EVENT_BATTLED)
@@ -50,24 +60,31 @@ function s.initial_effect(c)
 	c:RegisterEffect(e5)
 end
 
--- 🔹 Calcul DEF par compteur Âme
+--------------------------------------
+-- DEF +500 par compteur 0x700
+--------------------------------------
 function s.defval(e,c)
-	return c:GetCounter(0x101)*500
+	return c:GetCounter(0x700)*500
 end
 
--- 🔹 Effet FLIP : ajoute un compteur Âme
+--------------------------------------
+-- FLIP : ajoute un compteur 0x700
+--------------------------------------
 function s.flipop(e,tp,eg,ep,ev,re,r,rp)
-	e:GetHandler():AddCounter(0x101,1)
+	e:GetHandler():AddCounter(0x700,1)
 end
 
--- 🔹 Condition pour réduire ATK : le monstre attaque cette carte
+--------------------------------------
+-- Condition : le monstre attaque ce monstre
+--------------------------------------
 function s.atkcon(e)
 	local tc=Duel.GetAttacker()
-	if not tc then return false end
-	return tc:GetBattleTarget()==e:GetHandler()
+	return tc and tc:GetBattleTarget()==e:GetHandler()
 end
 
--- 🔹 Marquer les monstres ayant attaqué cette carte
+--------------------------------------
+-- Marque les monstres ayant attaqué ce monstre
+--------------------------------------
 function s.markop(e,tp,eg,ep,ev,re,r,rp)
 	local c=e:GetHandler()
 	local a=Duel.GetAttacker()
@@ -77,7 +94,9 @@ function s.markop(e,tp,eg,ep,ev,re,r,rp)
 	end
 end
 
--- 🔹 Restriction de matériel : empêche les monstres marqués d'être utilisés
+--------------------------------------
+-- Restriction : monstres marqués ne peuvent pas être matériel
+--------------------------------------
 function s.matlimit(e,c)
 	return c:GetFlagEffect(id)>0
 end
