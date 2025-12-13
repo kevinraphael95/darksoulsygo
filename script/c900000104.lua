@@ -1,13 +1,10 @@
 --Seigneur des cendres
 local s,id=GetID()
 function s.initial_effect(c)
-	-- Limite d'invocation
 	c:EnableReviveLimit()
-	
-	-- Rituel : uniquement avec "Le calice du seigneur"
-	aux.AddRitualProcCode(c,900000105,nil,0)
+	-- AUCUNE procédure d'invocation ici (gérée par la magie rituelle)
 
-	-- 1️⃣ Indestructible par effets
+	-- 1) Indestructible par effets
 	local e1=Effect.CreateEffect(c)
 	e1:SetType(EFFECT_TYPE_SINGLE)
 	e1:SetCode(EFFECT_INDESTRUCTABLE_EFFECT)
@@ -16,10 +13,10 @@ function s.initial_effect(c)
 	e1:SetValue(1)
 	c:RegisterEffect(e1)
 
-	-- 2️⃣ Annuler effet adverse durant Battle Phase et gagner ATK
+	-- 2) Négation + gain ATK pendant la Battle Phase
 	local e2=Effect.CreateEffect(c)
 	e2:SetDescription(aux.Stringid(id,0))
-	e2:SetCategory(CATEGORY_NEGATE)
+	e2:SetCategory(CATEGORY_NEGATE+CATEGORY_ATKCHANGE)
 	e2:SetType(EFFECT_TYPE_QUICK_O)
 	e2:SetCode(EVENT_CHAINING)
 	e2:SetRange(LOCATION_MZONE)
@@ -29,7 +26,7 @@ function s.initial_effect(c)
 	e2:SetOperation(s.negop)
 	c:RegisterEffect(e2)
 
-	-- 3️⃣ Infliger dommages si détruit un monstre au combat
+	-- 3) Inflige dommages si détruit un monstre au combat
 	local e3=Effect.CreateEffect(c)
 	e3:SetCategory(CATEGORY_DAMAGE)
 	e3:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_F)
@@ -39,7 +36,7 @@ function s.initial_effect(c)
 	e3:SetOperation(s.damop)
 	c:RegisterEffect(e3)
 
-	-- 4️⃣ Poser "Feu de camps" si quitte le Terrain
+	-- 4) Poser "Feu de camps" en quittant le terrain
 	local e4=Effect.CreateEffect(c)
 	e4:SetType(EFFECT_TYPE_SINGLE+EFFECT_TYPE_TRIGGER_O)
 	e4:SetCode(EVENT_LEAVE_FIELD)
@@ -49,19 +46,19 @@ function s.initial_effect(c)
 	c:RegisterEffect(e4)
 end
 
--- 🔹 Condition pour annulation durant Battle Phase
+-- Condition : durant Battle Phase, adversaire active un effet
 function s.negcon(e,tp,eg,ep,ev,re,r,rp)
 	local ph=Duel.GetCurrentPhase()
 	return rp==1-tp and ph>=PHASE_BATTLE_START and ph<=PHASE_BATTLE and Duel.IsChainNegatable(ev)
 end
 
--- 🔹 Ciblage pour annulation
+-- Cible pour négation
 function s.negtg(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then return true end
 	Duel.SetOperationInfo(0,CATEGORY_NEGATE,eg,1,0,0)
 end
 
--- 🔹 Opération : annulation et gain ATK
+-- Négation + gain 500 ATK (méthode correcte : création d'un effet d'ATK)
 function s.negop(e,tp,eg,ep,ev,re,r,rp)
 	if Duel.NegateActivation(ev) then
 		local c=e:GetHandler()
@@ -76,7 +73,7 @@ function s.negop(e,tp,eg,ep,ev,re,r,rp)
 	end
 end
 
--- 🔹 Ciblage pour infliger des dommages
+-- Ciblage pour dommages
 function s.damtg(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then return true end
 	local bc=e:GetHandler():GetBattleTarget()
@@ -88,30 +85,28 @@ function s.damtg(e,tp,eg,ep,ev,re,r,rp,chk)
 	end
 end
 
--- 🔹 Opération : infliger des dommages
+-- Opération de dommages
 function s.damop(e,tp,eg,ep,ev,re,r,rp)
 	local bc=e:GetHandler():GetBattleTarget()
-	if bc then
-		local p=Duel.GetChainInfo(0,CHAININFO_TARGET_PLAYER)
+	if bc and bc:IsLocation(LOCATION_MZONE) then
 		local dam=math.floor(bc:GetAttack()/2)
-		Duel.Damage(p,dam,REASON_EFFECT)
+		Duel.Damage(1-tp,dam,REASON_EFFECT)
 	end
 end
 
--- 🔹 Filtre pour "Feu de camps"
+-- Filtre "Feu de camps" => ID 900000102 (comme demandé)
 function s.fcfilter(c)
-	return c:IsCode(900000106) and c:IsSSetable()
+	return c:IsCode(900000102) and c:IsSSetable()
 end
 
--- 🔹 Ciblage pour poser "Feu de camps"
+-- Ciblage pour poser "Feu de camps"
 function s.fctg(e,tp,eg,ep,ev,re,r,rp,chk)
 	if chk==0 then 
-		return Duel.IsExistingMatchingCard(s.fcfilter,tp,LOCATION_HAND+LOCATION_DECK+LOCATION_GRAVE,0,1,nil) 
+		return Duel.IsExistingMatchingCard(s.fcfilter,tp,LOCATION_HAND+LOCATION_DECK+LOCATION_GRAVE,0,1,nil)
 	end
-	Duel.SetOperationInfo(0,CATEGORY_TOHAND,nil,1,tp,LOCATION_DECK+LOCATION_HAND+LOCATION_GRAVE)
 end
 
--- 🔹 Opération : poser la carte
+-- Opération : poser la carte
 function s.fcop(e,tp,eg,ep,ev,re,r,rp)
 	Duel.Hint(HINT_SELECTMSG,tp,HINTMSG_SET)
 	local g=Duel.SelectMatchingCard(tp,s.fcfilter,tp,LOCATION_HAND+LOCATION_DECK+LOCATION_GRAVE,0,1,1,nil)
